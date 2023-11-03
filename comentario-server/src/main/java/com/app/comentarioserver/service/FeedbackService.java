@@ -1,6 +1,7 @@
 package com.app.comentarioserver.service;
 
 import com.app.comentarioserver.entity.*;
+import com.app.comentarioserver.exception.FeedbackNotFoundException;
 import com.app.comentarioserver.pojo.Comment;
 import com.app.comentarioserver.repository.FeedbackRepository;
 import com.app.comentarioserver.sentiment_analysis.AnalyzeSentiments;
@@ -19,87 +20,32 @@ public class FeedbackService {
 
     private final FeedbackRepository feedbackRepository;
 
+    private final EmailService emailService;
+
     private final UserService userService;
     private final BoardService boardService;
 
     private final AnalyzeSentiments sentiments;
 
-    public List<Feedback> getAllFeedbacks() {
-        return feedbackRepository.findAll();
-    }
 
     public Feedback getFeedbackFormId(String id) {
-        return feedbackRepository.findById(id). orElseThrow();
+        return feedbackRepository.findById(id).orElseThrow(() -> new FeedbackNotFoundException("Unable to find feedback with id: " + id));
     }
 
     public Feedback addFeedback(Feedback feedback) {
         feedback.setSentiment(calculateSentiment(feedback.getTitle(), feedback.getDescription()));
         Feedback newFeedback = feedbackRepository.save(feedback);
-        boardService.addFeedbackToTheBoard(newFeedback.getBoardId(), newFeedback);
-        Board board = boardService.getBoard(newFeedback.getBoardId());
-        sendFeedbackMail(userService.getUserByUsername(board.getUsername()), board);
+        boolean status = boardService.addFeedbackToTheBoard(newFeedback.getBoardId(), newFeedback);
+        if (status)
+            emailService.sendFeedbackMail(newFeedback);
         return newFeedback;
-    }
-
-    private void sendFeedbackMail(User user, Board board) {
-        String to = user.getMailId();
-        String subject = "You've a new feedback for " + board.getTitle();
-        String htmlContent = """
-                <html>
-                <body>
-                """ +
-                "<h1>Hello again, " + user.getFullName() + "</h1> " +
-                "<p>You've got a new feedback. please check.</p>" +
-                "<a href=\"http://localhost:5173/board/" + board.getId() + "\">Click here</a>" +
-                """
-                </body>
-                </html>""";
-
-        userService.sendEmail(to, subject, htmlContent);
-    }
-
-    public Feedback postComment(String id, Comment comment) {
-        comment.setSentiment(calculateSentiment(comment.getCommentTitle(), null));
-        Feedback feedback = feedbackRepository.findById(id).orElseThrow();
-        feedback.setComments(comment);
-        return feedbackRepository.save(feedback);
-    }
-    public void deleteAll() {
-        feedbackRepository.deleteAll();
     }
 
     public Feedback addFeedbackToRoadmap(String feedbackId, Roadmap roadmap) {
         Feedback feedback = feedbackRepository.findById(feedbackId).orElseThrow();
         feedback.setRoadmap(roadmap);
-        sendRoadmapUpdatedMail(feedback);
+        emailService.sendRoadmapUpdatedMail(feedback);
         return feedbackRepository.save(feedback);
-    }
-
-    private void sendRoadmapUpdatedMail(Feedback feedback) {
-        User user = userService.getUserByUsername(feedback.getUsername());
-        Board board = boardService.getBoard(feedback.getBoardId());
-        String to = user.getMailId();
-        String subject = "Yay, your feedback is considered";
-        String htmlContent = """
-                <html>
-                <body>
-                """ +
-                "<h1>Hello again, " + user.getFullName() + "</h1> " +
-                "<p>Thanks for the feedback</p>" +
-                "<p>Your feedback is being considered for" + board.getTitle() + "</p>" +
-                "<a href=\"http://localhost:5173/roadmap/" + board.getId() + "\">Click here</a>" +
-                """
-                </body>
-                </html>""";
-
-        userService.sendEmail(to, subject, htmlContent);
-    }
-
-    public boolean deleteComment(String feedbackId, String commentId) {
-        Feedback feedback = getFeedbackFormId(feedbackId);
-        boolean status = feedback.getComments().removeIf(comment -> comment.getCommentId().equals(commentId));
-        feedbackRepository.save(feedback);
-        return status;
     }
 
     public Sentiment calculateSentiment(String title, String description) {

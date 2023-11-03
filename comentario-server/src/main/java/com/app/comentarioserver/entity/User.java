@@ -22,7 +22,6 @@ import java.util.List;
 @Document(collection = "users")
 @Getter
 @Setter
-@NoArgsConstructor
 public class User implements UserDetails {
 
     @Id
@@ -64,6 +63,10 @@ public class User implements UserDetails {
     @JsonDeserialize(using = GrantedAuthorityDeserializer.class)
     private Collection<? extends GrantedAuthority> roles;
 
+    public User() {
+        this.boards = new LinkedList<>();
+    }
+
     public User(String fullName, String username, String mailId, String password, ImageData imageData) {
         this.fullName = fullName;
         this.username = username;
@@ -79,6 +82,7 @@ public class User implements UserDetails {
         this.mailId = mailId;
         this.password = password;
         this.roles = roles;
+        this.boards = new LinkedList<>();
     }
 
     @Override

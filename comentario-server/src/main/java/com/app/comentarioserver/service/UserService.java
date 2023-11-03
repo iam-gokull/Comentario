@@ -3,7 +3,6 @@ package com.app.comentarioserver.service;
 import com.app.comentarioserver.dto.AuthRequest;
 import com.app.comentarioserver.dto.UserRequest;
 import com.app.comentarioserver.entity.Board;
-import com.app.comentarioserver.entity.Feedback;
 import com.app.comentarioserver.imagekit_upload.ImageUpload;
 import com.app.comentarioserver.pojo.ImageData;
 import com.app.comentarioserver.pojo.Token;
@@ -16,12 +15,8 @@ import com.app.comentarioserver.repository.BoardRepository;
 import com.app.comentarioserver.repository.FeedbackRepository;
 import com.app.comentarioserver.repository.UserRepository;
 import io.imagekit.sdk.exceptions.*;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -50,7 +45,7 @@ public class UserService implements UserDetailsService {
 
     private final JwtTokenProvider jwtTokenProvider;
 
-    private final JavaMailSender mailSender;
+    private final EmailService emailService;
 
     private final ImageUpload imageUpload;
 
@@ -77,45 +72,8 @@ public class UserService implements UserDetailsService {
 
         User user = new User(userRequest.getFullName(), userRequest.getUsername(), userRequest.getMailId(), encoder.encode(userRequest.getPassword()), userRequest.getImageData());
         user.setRoles(List.of(new SimpleGrantedAuthority("User")));
-        sendVerificationMail(user);
+        emailService.sendVerificationMail(user);
         return userRepository.save(user);
-    }
-
-    public void sendVerificationMail(User user) {
-        user.setVerified(false);
-        Token token = new Token();
-        user.setVerificationToken(token);
-
-        String verificationTokenValue = user.getVerificationToken().getUserToken();
-        String to = user.getMailId();
-        String subject = "Welcome, " + user.getFullName();
-        String htmlContent = """
-                <html>
-                <body>
-                <h1>Welcome</h1>
-                <p>Please click the below button to verify your account</p>""" +
-                "<a href=\"http://localhost:8080/users/verify-register-token?token=" + verificationTokenValue + "&email=" + user.getMailId() + "\">Verify Email</a>" +
-                """
-                </body>
-                </html>""";
-
-        sendEmail(to, subject, htmlContent);
-    }
-
-    public void sendEmail(String to, String subject, String htmlContent) {
-        MimeMessage message = mailSender.createMimeMessage();
-
-        MimeMessageHelper mimeMessageHelper;
-        try {
-            mimeMessageHelper = new MimeMessageHelper(message, true, "UTF-8");
-            mimeMessageHelper.setSubject(subject);
-            mimeMessageHelper.setTo(to);
-            mimeMessageHelper.setText(htmlContent, true);
-        } catch (MessagingException e) {
-            e.printStackTrace();
-        }
-
-        mailSender.send(message);
     }
 
     private boolean checkIfMailIdExists(String mailId) {
@@ -130,21 +88,11 @@ public class UserService implements UserDetailsService {
         int number = new Random().nextInt(999999);
         String otp = String.format("%06d", number);
 
-        String subject = "Password reset";
-        String htmlContent = """
-                <html>
-                <body>
-                <h1>Welcome</h1>
-                <p>Here is your one time token for password reset</p>
-                <p>It'll expire in a day, kindly don't share it with anyone</p>""" +
-                otp +
-                """
-                </body>
-                </html>
-                        """;
-        sendEmail(mailId, subject, htmlContent);
+        emailService.sendPasswordResetMail(otp, mailId);
         return otp;
     }
+
+
 
     public boolean resetPassword(String mailId, String password) {
         User user = getByMailId(mailId);
@@ -163,24 +111,15 @@ public class UserService implements UserDetailsService {
             user.setVerificationToken(token);
 
             String verificationTokenValue = user.getVerificationToken().getUserToken();
-            String to = user.getMailId();
-            String subject = "Welcome, " + user.getFullName();
-            String htmlContent = """
-                <html>
-                <body>
-                <h1>Welcome</h1>
-                <p>Please click the below button to verify your account</p>""" +
-                    "<a href=\"http://localhost:8080/users/verify-register-token?token=" + verificationTokenValue + "&email=" + user.getMailId() + "\">Verify Email</a>" +
-                    """
-                    </body>
-                    </html>""";
-
-            sendEmail(to, subject, htmlContent);
+            emailService.sendVerificationMail(user, verificationTokenValue);
             userRepository.save(user);
             throw new UserNotEnabledException("User not verified");
         }
+
         return jwtToken;
     }
+
+
 
     public boolean checkUserVerification(String identifier) {
         User user = loadByIdentifier(identifier);
@@ -265,7 +204,7 @@ public class UserService implements UserDetailsService {
             throw new UserAlreadyExistsException("User already exists with this Email");
         }
         user.setMailId(mailId);
-        sendVerificationMail(user);
+        emailService.sendVerificationMail(user);
         return userRepository.save(user);
     }
 
@@ -276,7 +215,7 @@ public class UserService implements UserDetailsService {
     }
 
     public void updateBoardUsername(String username, String newUsername) {
-        boardRepository.findByUsername(username).ifPresent((board) -> {
+        boardRepository.findByUsername(username).ifPresent(board -> {
             board.setUsername(newUsername);
             boardRepository.save(board);
         });
@@ -342,5 +281,4 @@ public class UserService implements UserDetailsService {
         user.setBoards(board);
         userRepository.save(user);
     }
-
 }

@@ -27,16 +27,11 @@ public class BoardController {
 
     private final ObjectMapper objectMapper;
 
-    @DeleteMapping("/delete-all")
-    public void deleteAllBoards() {
-        boardService.deleteAll();
-    }
 
-    // Delete everything from above
 
     @GetMapping("/all-boards")
     public ResponseEntity<List<Board>> allBoards() {
-        return new ResponseEntity<>(boardService.allBoards(), HttpStatus.OK);
+        return new ResponseEntity<>(boardService.getAllBoards(), HttpStatus.OK);
     }
 
     @PostMapping(value = "/add", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -59,7 +54,7 @@ public class BoardController {
 
     @GetMapping("/board/{boardId}")
     public ResponseEntity<Board> getBoard(@PathVariable String boardId) {
-        return new ResponseEntity<>(boardService.getBoard(boardId), HttpStatus.OK);
+        return new ResponseEntity<>(boardService.getBoardById(boardId), HttpStatus.OK);
     }
 
     @PutMapping(value = "/update/url-click/{boardId}")

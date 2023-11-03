@@ -55,6 +55,24 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
+    @ExceptionHandler(FeedbackNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleFeedbackNotFoundException(FeedbackNotFoundException ex) {
+        ErrorResponse errorResponse = new ErrorResponse("Feedback not found", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    @ExceptionHandler(BoardNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleBoardNotFoundException(BoardNotFoundException ex) {
+        ErrorResponse errorResponse = new ErrorResponse("Board not found", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    @ExceptionHandler(UnableToAddFeedbackException.class)
+    public ResponseEntity<ErrorResponse> handleUnableToAddFeedbackException(UnableToAddFeedbackException ex) {
+        ErrorResponse errorResponse = new ErrorResponse("Unable to add feedback", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
     @Data
     @AllArgsConstructor
     public static class ErrorResponse {

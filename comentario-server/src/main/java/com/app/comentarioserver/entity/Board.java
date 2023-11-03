@@ -16,7 +16,6 @@ import java.util.List;
 @Document(collection = "boards")
 @Getter
 @Setter
-@NoArgsConstructor
 public class Board {
 
     @Id
@@ -50,6 +49,10 @@ public class Board {
 
     public void setUrlClick() {
        this.urlClickCount = urlClickCount + 1;
+    }
+
+    public Board() {
+        this.feedbacks = new LinkedList<>();
     }
 
     public Board(BoardDto boardDto) {

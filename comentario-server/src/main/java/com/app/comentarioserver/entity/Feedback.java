@@ -6,7 +6,6 @@ import com.app.comentarioserver.types.Category;
 import com.app.comentarioserver.types.Roadmap;
 import com.app.comentarioserver.types.Sentiment;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -16,7 +15,6 @@ import java.util.*;
 @Document(collection = "feedbacks")
 @Getter
 @Setter
-@NoArgsConstructor
 public class Feedback {
 
     @Id
@@ -64,6 +62,11 @@ public class Feedback {
 
     public int getUpVoteCount() {
         return this.upVoteUsernames.size();
+    }
+
+    public Feedback() {
+        this.upVoteUsernames = new HashSet<>();
+        this.comments = new LinkedList<>();
     }
 
     public Feedback(FeedbackDto feedbackDto) {
